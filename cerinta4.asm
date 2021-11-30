@@ -5,6 +5,7 @@
     spatiu: .asciz " "
     instr: .space 101
     a: .space 1601
+    b: .space 1601
     n: .space 4
     m: .space 4
     d: .space 4
@@ -69,11 +70,12 @@ cont_main_citire:
     pushl %eax
     call atoi
     popl %ebx
-    
+
     xorl %ecx, %ecx
+    xorl %edx, %edx
     
     cmp $0, %eax
-    //je op_rot90d
+    je pre_op_rot90d_p1
     
     movl %eax, o
     
@@ -101,7 +103,7 @@ cont_main_citire:
     cmp $100, %al
     je op_div
     
-cont_main_procesare:
+cont_main_procesare_asmd:
     pushl n
     pushl $printfD
     call printf
@@ -124,9 +126,32 @@ cont_main_procesare:
     
     jmp for_afisare
     
+cont_main_procesare_r:
+    pushl m
+    pushl $printfD
+    call printf
+    popl %ebx
+    popl %ebx
+    
+    pushl $spatiu
+    pushl $printfS
+    call printf
+    popl %ebx
+    popl %ebx
+    
+    pushl n
+    pushl $printfD
+    call printf
+    popl %ebx
+    popl %ebx
+    
+    xorl %ecx, %ecx
+    
+    jmp for_afisare
+    
 op_add:
     cmp d, %ecx
-    je cont_main_procesare
+    je cont_main_procesare_asmd
     
     movl (%esi, %ecx, 4), %eax
     
@@ -140,7 +165,7 @@ op_add:
     
 op_sub:
     cmp d, %ecx
-    je cont_main_procesare
+    je cont_main_procesare_asmd
     
     movl (%esi, %ecx, 4), %eax
     
@@ -154,7 +179,7 @@ op_sub:
     
 op_mul:
     cmp d, %ecx
-    je cont_main_procesare
+    je cont_main_procesare_asmd
     
     movl (%esi, %ecx, 4), %eax
     
@@ -168,19 +193,145 @@ op_mul:
     
 op_div:
     cmp d, %ecx
-    je cont_main_procesare
+    je cont_main_procesare_asmd
     
     movl (%esi, %ecx, 4), %eax
     
+    cmp $0, %eax
+    jl op_div_negativ
+    
     xorl %edx, %edx
     
-    idivl o, %eax
+    idivl o
     
+cont_op_div:
     movl %eax, (%esi, %ecx, 4)
     
     incl %ecx
     
     jmp op_div
+    
+op_div_negativ:
+    pushl %eax
+    call abs
+    popl %ebx
+    
+    xorl %edx, %edx
+    
+    idivl o
+    
+    cmp $0, %eax
+    jg nr_pozitiv
+    jl nr_negativ
+    
+nr_pozitiv:
+    movl %eax, %ebx
+    subl %ebx, %eax
+    subl %ebx, %eax
+    
+    jmp cont_op_div
+    
+nr_negativ:
+    pushl %eax
+    call abs
+    popl %ebx
+    
+    jmp cont_op_div
+    
+pre_op_rot90d_p1:
+    lea b, %edi
+    
+op_rot90d_p1:
+    cmp m, %edx
+    je reset_for_int_p1
+    jmp cont_for_int_p1
+    
+reset_for_int_p1:
+    xorl %edx, %edx
+    incl %ecx
+
+    cmp n, %ecx
+    je pre_op_rot90d_p2
+    
+cont_for_int_p1:
+    pushl %ecx
+    pushl %edx
+    
+    movl %ecx, %eax
+    
+    pushl %edx
+    mull m
+    popl %edx
+    
+    addl %edx, %eax
+    
+    movl (%esi, %eax, 4), %ebx
+    
+    movl %edx, %eax
+    
+    pushl %edx
+    mull n
+    popl %edx
+    
+    addl %ecx, %eax
+    
+    movl %ebx, (%edi, %eax, 4)
+    
+    popl %edx
+    popl %ecx
+    
+    incl %edx
+    
+    jmp op_rot90d_p1
+    
+pre_op_rot90d_p2:
+    xorl %ecx, %ecx
+    xorl %edx, %edx
+
+op_rot90d_p2:
+    cmp n, %edx
+    je reset_for_int_p2
+    jmp cont_for_int_p2
+    
+reset_for_int_p2:
+    xorl %edx, %edx
+    incl %ecx
+
+    cmp m, %ecx
+    je cont_main_procesare_r
+    
+cont_for_int_p2:
+    pushl %ecx
+    pushl %edx
+    
+    movl %ecx, %eax
+    
+    pushl %edx
+    mull n
+    popl %edx
+    
+    addl %edx, %eax
+    
+    movl (%edi, %eax, 4), %ebx
+    
+    movl %ecx, %eax
+    
+    pushl %edx
+    mull n
+    popl %edx
+    
+    addl n, %eax
+    subl $1, %eax
+    subl %edx, %eax
+    
+    movl %ebx, (%esi, %eax, 4)
+    
+    popl %edx
+    popl %ecx
+    
+    incl %edx
+    
+    jmp op_rot90d_p2
     
 for_citire:
     cmp d, %ecx
